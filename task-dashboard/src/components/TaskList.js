@@ -197,14 +197,12 @@
 
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import {
   deleteTask,
   toggleComplete,
   addTask,
   updatePriority,
   updateTask,
-  reorderTasks,
 } from '../features/tasks/taskSlice';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
@@ -220,6 +218,7 @@ const TaskList = () => {
     title: '',
     description: '',
     dueDate: '',
+    priority: 'Medium',
   });
 
   // State for search term
@@ -263,10 +262,17 @@ const TaskList = () => {
 
   // Handle task submission
   const handleAddTask = () => {
-    if (!newTask.title || !newTask.dueDate) return;
+    if (!newTask.title || !newTask.dueDate) {
+      alert('Please enter a task title and due date');
+      return;
+    }
 
-    dispatch(addTask({ ...newTask, id: Date.now(), completed: false }));
-    setNewTask({ title: '', description: '', dueDate: '' });
+    dispatch(addTask({ 
+      ...newTask, 
+      id: Date.now(), 
+      completed: false 
+    }));
+    setNewTask({ title: '', description: '', dueDate: '', priority: 'Medium' });
   };
 
   // Handle task editing
@@ -275,34 +281,12 @@ const TaskList = () => {
     setEditingTask({ ...task });
   };
   const handleSaveEdit = () => {
-    dispatch(updateTask(editingTask));
-    setEditingTask(null);
-  };
-
-  const handlePriorityChange = (taskId, priority) => {
-    dispatch(updatePriority({ id: taskId, priority }));
-  };
-
-  // Handle drag and drop
-  const onDragEnd = (result) => {
-    const { source, destination } = result;
-
-    // If dropped outside the list or in the same position
-    if (
-      !destination ||
-      (source.index === destination.index &&
-        source.droppableId === destination.droppableId)
-    ) {
+    if (!editingTask.title) {
+      alert('Task title cannot be empty');
       return;
     }
-
-    // Dispatch reorder action
-    dispatch(
-      reorderTasks({
-        sourceIndex: source.index,
-        destinationIndex: destination.index,
-      })
-    );
+    dispatch(updateTask(editingTask));
+    setEditingTask(null);
   };
 
   // New handler for deleting a task
@@ -319,32 +303,45 @@ const TaskList = () => {
     }
   };
 
+  const cancelDeleteTask = () => {
+    setDeleteModalOpen(false);
+    setTaskToDelete(null);
+  };
+
   return (
-    <div>
+    <div className="task-list-container">
       <h2>Task Dashboard</h2>
 
       {/* Filter Buttons */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setFilter('all')} style={{ marginRight: '10px' }}>
+      <div className="filter-buttons">
+        <button 
+          onClick={() => setFilter('all')} 
+          className={filter === 'all' ? 'active' : ''}
+        >
           All
         </button>
-        <button
-          onClick={() => setFilter('completed')}
-          style={{ marginRight: '10px' }}
+        <button 
+          onClick={() => setFilter('completed')} 
+          className={filter === 'completed' ? 'active' : ''}
         >
           Completed
         </button>
-        <button
-          onClick={() => setFilter('pending')}
-          style={{ marginRight: '10px' }}
+        <button 
+          onClick={() => setFilter('pending')} 
+          className={filter === 'pending' ? 'active' : ''}
         >
           Pending
         </button>
-        <button onClick={() => setFilter('overdue')}>Overdue</button>
+        <button 
+          onClick={() => setFilter('overdue')}
+          className={filter === 'overdue' ? 'active' : ''}
+        >
+          Overdue
+        </button>
       </div>
 
       {/* Search Input */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="search-container">
         <input
           type="text"
           placeholder="Search Tasks"
@@ -354,7 +351,7 @@ const TaskList = () => {
       </div>
 
       {/* Sort Dropdown */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="sort-container">
         <label>Sort By: </label>
         <select
           value={sortOption}
@@ -367,7 +364,7 @@ const TaskList = () => {
       </div>
 
       {/* Add New Task Form */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="add-task-form">
         <input
           type="text"
           placeholder="Task Title"
@@ -387,24 +384,34 @@ const TaskList = () => {
           value={newTask.dueDate}
           onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
         />
+        <select
+          value={newTask.priority}
+          onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+        >
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
         <button onClick={handleAddTask}>Add Task</button>
       </div>
 
       {/* Edit Task Form */}
       {editingTask && (
-        <div className="edit-form">
+        <div className="edit-task-form">
           <input
             type="text"
             value={editingTask.title}
             onChange={(e) =>
               setEditingTask({ ...editingTask, title: e.target.value })
             }
+            placeholder="Task Title"
           />
           <textarea
             value={editingTask.description}
             onChange={(e) =>
               setEditingTask({ ...editingTask, description: e.target.value })
             }
+            placeholder="Task Description"
           />
           <input
             type="date"
@@ -413,91 +420,71 @@ const TaskList = () => {
               setEditingTask({ ...editingTask, dueDate: e.target.value })
             }
           />
-          <button onClick={handleSaveEdit}>Save</button>
+          <select
+            value={editingTask.priority || 'Medium'}
+            onChange={(e) =>
+              setEditingTask({ ...editingTask, priority: e.target.value })
+            }
+          >
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <button onClick={handleSaveEdit}>Save Changes</button>
+          <button onClick={() => setEditingTask(null)}>Cancel</button>
         </div>
       )}
 
-      {/* Task List with Drag and Drop */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="task-list">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {sortedTasks.length === 0 ? (
-                <p>No tasks to show for the selected filter.</p>
-              ) : (
-                sortedTasks.map((task, index) => (
-                  <Draggable
-                    key={task.id}
-                    draggableId={task.id.toString()}
-                    index={index}
-                  >
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          ...provided.draggableProps.style,
-                          marginBottom: '10px',
-                          backgroundColor:
-                            new Date(task.dueDate) < new Date() &&
-                            !task.completed
-                              ? '#f8d7da'
-                              : 'white',
-                        }}
-                        className="task-card"
-                      >
-                        <h3>{task.title}</h3>
-                        <p>{task.description}</p>
-                        <p>Due Date: {task.dueDate}</p>
-                        <p>Status: {task.completed ? 'Completed' : 'Pending'}</p>
-                        <button
-                          onClick={() => dispatch(toggleComplete(task.id))}
-                        >
-                          {task.completed
-                            ? 'Mark as Pending'
-                            : 'Mark as Completed'}
-                        </button>
-                        {/* Priority Dropdown */}
-                        <div>
-                          <label>Priority: </label>
-                          <select
-                            value={task.priority || 'Medium'}
-                            onChange={(e) =>
-                              handlePriorityChange(task.id, e.target.value)
-                            }
-                          >
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                          </select>
-                        </div>
-                        <button onClick={() => handleDeleteTask(task)}>
-                          Delete
-                        </button>
-                        <button onClick={() => handleEdit(task)}>Edit</button>
-                      </div>
-                    )}
-                  </Draggable>
-                ))
-              )}
-              {provided.placeholder}
+      {/* Task List (no Drag and Drop) */}
+      <div className="task-list">
+        {sortedTasks.length === 0 ? (
+          <p>No tasks to show for the selected filter.</p>
+        ) : (
+          sortedTasks.map((task) => (
+            <div key={task.id} className={`task-card ${new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : ''}`}>
+              <div className="task-header">
+                <h3>{task.title}</h3>
+                <span className="task-priority">{task.priority}</span>
+              </div>
+              <p>{task.description}</p>
+              <div className="task-details">
+                <p>Due Date: {task.dueDate}</p>
+                <p>Status: {task.completed ? 'Completed' : 'Pending'}</p>
+              </div>
+              <div className="task-actions">
+                <button
+                  onClick={() => dispatch(toggleComplete(task.id))}
+                  className="toggle-complete-btn"
+                >
+                  {task.completed ? 'Mark as Pending' : 'Mark as Completed'}
+                </button>
+                <button
+                  onClick={() => handleDeleteTask(task)}
+                  className="delete-btn"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => handleEdit(task)}
+                  className="edit-btn"
+                >
+                  Edit
+                </button>
+              </div>
             </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      {/* Delete Confirmation Modal */}
-      {/* Delete Confirmation Modal */}
-<DeleteConfirmationModal
-  isOpen={deleteModalOpen}
-  onClose={() => setDeleteModalOpen(false)}
-  onConfirm={confirmDeleteTask}
-  task={taskToDelete}
-/>
-</div>
-
+          ))
         )}
+      </div>
 
-        export default TaskList;
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <DeleteConfirmationModal
+          onConfirm={confirmDeleteTask}
+          onCancel={cancelDeleteTask}
+        />
+      )}
+    </div>
+  );
+};
 
+export default TaskList;

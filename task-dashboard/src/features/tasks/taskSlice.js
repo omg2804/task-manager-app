@@ -30,10 +30,9 @@ const taskSlice = createSlice({
       }
     },
     reorderTasks: (state, action) => {
-      const { sourceIndex, destinationIndex } = action.payload;
-      const [removed] = state.tasks.splice(sourceIndex, 1);
-      state.tasks.splice(destinationIndex, 0, removed);
+      state.tasks = action.payload;
     },
+      
     updatePriority: (state, action) => {
       const task = state.tasks.find(task => task.id === action.payload.id);
       if (task) {
