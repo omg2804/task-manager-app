@@ -201,10 +201,8 @@ import {
   deleteTask,
   toggleComplete,
   addTask,
-  updatePriority,
   updateTask,
 } from '../features/tasks/taskSlice';
-import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const TaskList = () => {
   const tasks = useSelector((state) => state.tasks.tasks);
@@ -227,8 +225,8 @@ const TaskList = () => {
   // State for sorting
   const [sortOption, setSortOption] = useState('default');
 
-  // State for delete confirmation modal
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  // State to manage the confirmation modal visibility and the task to delete
+  const [showModal, setShowModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
   // Filter tasks based on search term and selected filter
@@ -267,10 +265,10 @@ const TaskList = () => {
       return;
     }
 
-    dispatch(addTask({ 
-      ...newTask, 
-      id: Date.now(), 
-      completed: false 
+    dispatch(addTask({
+      ...newTask,
+      id: Date.now(),
+      completed: false
     }));
     setNewTask({ title: '', description: '', dueDate: '', priority: 'Medium' });
   };
@@ -289,23 +287,23 @@ const TaskList = () => {
     setEditingTask(null);
   };
 
-  // New handler for deleting a task
+  // Handle delete task (triggering the confirmation modal)
   const handleDeleteTask = (task) => {
+    setShowModal(true);
     setTaskToDelete(task);
-    setDeleteModalOpen(true);
   };
 
-  const confirmDeleteTask = () => {
+  // Confirm task deletion
+  const confirmDelete = () => {
     if (taskToDelete) {
-      dispatch(deleteTask(taskToDelete.id));
-      setDeleteModalOpen(false);
-      setTaskToDelete(null);
+      dispatch(deleteTask(taskToDelete.id)); // Proceed with deletion
+      setShowModal(false); // Close the modal
     }
   };
 
-  const cancelDeleteTask = () => {
-    setDeleteModalOpen(false);
-    setTaskToDelete(null);
+  // Cancel deletion
+  const cancelDelete = () => {
+    setShowModal(false); // Close the modal without doing anything
   };
 
   return (
@@ -314,25 +312,25 @@ const TaskList = () => {
 
       {/* Filter Buttons */}
       <div className="filter-buttons">
-        <button 
-          onClick={() => setFilter('all')} 
+        <button
+          onClick={() => setFilter('all')}
           className={filter === 'all' ? 'active' : ''}
         >
           All
         </button>
-        <button 
-          onClick={() => setFilter('completed')} 
+        <button
+          onClick={() => setFilter('completed')}
           className={filter === 'completed' ? 'active' : ''}
         >
           Completed
         </button>
-        <button 
-          onClick={() => setFilter('pending')} 
+        <button
+          onClick={() => setFilter('pending')}
           className={filter === 'pending' ? 'active' : ''}
         >
           Pending
         </button>
-        <button 
+        <button
           onClick={() => setFilter('overdue')}
           className={filter === 'overdue' ? 'active' : ''}
         >
@@ -435,13 +433,16 @@ const TaskList = () => {
         </div>
       )}
 
-      {/* Task List (no Drag and Drop) */}
+      {/* Task List */}
       <div className="task-list">
         {sortedTasks.length === 0 ? (
           <p>No tasks to show for the selected filter.</p>
         ) : (
           sortedTasks.map((task) => (
-            <div key={task.id} className={`task-card ${new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : ''}`}>
+            <div
+              key={task.id}
+              className={`task-card ${new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : ''}`}
+            >
               <div className="task-header">
                 <h3>{task.title}</h3>
                 <span className="task-priority">{task.priority}</span>
@@ -459,7 +460,7 @@ const TaskList = () => {
                   {task.completed ? 'Mark as Pending' : 'Mark as Completed'}
                 </button>
                 <button
-                  onClick={() => handleDeleteTask(task)}
+                  onClick={() => handleDeleteTask(task)} // Trigger delete confirmation
                   className="delete-btn"
                 >
                   Delete
@@ -476,12 +477,13 @@ const TaskList = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
-        <DeleteConfirmationModal
-          onConfirm={confirmDeleteTask}
-          onCancel={cancelDeleteTask}
-        />
+      {/* Confirmation Modal */}
+      {showModal && (
+        <div className="confirmation-modal">
+          <p>Are you sure you want to delete this task?</p>
+          <button onClick={confirmDelete}>Yes</button>
+          <button onClick={cancelDelete}>No</button>
+        </div>
       )}
     </div>
   );
